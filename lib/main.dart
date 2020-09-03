@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong/latlong.dart';
 
 void main() {
   runApp(App());
@@ -13,7 +15,7 @@ class App extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: HomePage(title: 'Flutter Demo Home Page'),
+      home: HomePage(title: 'Wikiscape'),
     );
   }
 }
@@ -28,13 +30,20 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _counter = 0;
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
+  var staticMarkers = <Marker>[
+    Marker(
+      width: 40,
+      height: 40,
+      point: LatLng(50.9097, 1.4044),
+      builder: (_) => Container(
+        child: FlutterLogo(
+          colors: Colors.blue,
+          key: ObjectKey(Colors.blue),
+        ),
+      )
+    )
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -43,23 +52,20 @@ class _HomePageState extends State<HomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
+        child: FlutterMap(
+          options: MapOptions(
+            center: LatLng(50.9097, 1.4044),
+            zoom: 8.0,
+          ),
+          layers: [
+            TileLayerOptions(
+              urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              subdomains: ['a', 'b', 'c'],
+              tileProvider: CachedNetworkTileProvider()
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
+            MarkerLayerOptions(markers: staticMarkers)
           ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
+        )
       ),
     );
   }
