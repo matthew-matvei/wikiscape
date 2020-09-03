@@ -31,6 +31,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
+  LatLng _northWestPoint;
+  LatLng _southEastPoint;
+
   var staticMarkers = <Marker>[
     Marker(
       width: 40,
@@ -45,6 +48,17 @@ class _HomePageState extends State<HomePage> {
     )
   ];
 
+  void _handlePositionChanged(MapPosition position, bool _) {
+    _northWestPoint = position.bounds.northWest;
+    _southEastPoint = position.bounds.southEast;
+  }
+
+  void _search() {
+    print("Searching activated");
+    print("North West point: latitude = ${_northWestPoint?.latitude ?? 0}, longitude = ${_northWestPoint?.longitude ?? 0}");
+    print("South East point: latitude = ${_southEastPoint?.latitude ?? 0}, longitude = ${_southEastPoint?.longitude ?? 0}");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,6 +70,7 @@ class _HomePageState extends State<HomePage> {
           options: MapOptions(
             center: LatLng(50.9097, 1.4044),
             zoom: 8.0,
+            onPositionChanged: _handlePositionChanged,
           ),
           layers: [
             TileLayerOptions(
@@ -65,7 +80,12 @@ class _HomePageState extends State<HomePage> {
             ),
             MarkerLayerOptions(markers: staticMarkers)
           ],
-        )
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Search',
+        child: Icon(Icons.search),
+        onPressed: _search,
       ),
     );
   }
