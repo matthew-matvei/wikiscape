@@ -100,8 +100,8 @@ class _HomePageState extends State<HomePage> {
     fetchedArticles.fold(
             (error) => print("${error.errorCode}: ${error.errorMessage}"),
             (result) => {
-              for (var i in result.queryResults) {
-                print("Title = ${i.title}, Id = ${i.pageId}")
+              for (var i in result.articleResults) {
+                print("Title = ${i.title}, Id = ${i.pageId}, Lat = ${i.coordinates.latitude}, Lon = ${i.coordinates.longitude}")
               }
             });
   }
@@ -147,17 +147,30 @@ class _FetchError {
 
 class _FetchResult {
 
-  final List<_QueryResult> queryResults;
+  final List<_ArticleResult> articleResults;
 
-  const _FetchResult({this.queryResults});
+  const _FetchResult({this.articleResults});
 
   factory _FetchResult.fromJson(Map<String, dynamic> json) =>
-      _FetchResult(queryResults: (json['query']['geosearch'] as List<dynamic>).map((result) => _QueryResult(pageId: result['pageid'], title: result['title'])).toList());
+      _FetchResult(articleResults: (json['query']['geosearch'] as List<dynamic>).map((result) => _ArticleResult.fromJson(result)).toList());
 }
 
-class _QueryResult {
+class _ArticleResult {
   final int pageId;
   final String title;
+  final LatLng coordinates;
 
-  const _QueryResult({this.pageId, this.title});
+  const _ArticleResult(
+      {
+        this.pageId,
+        this.title,
+        this.coordinates,
+      });
+  
+  factory _ArticleResult.fromJson(Map<String, dynamic> json) =>
+      _ArticleResult(
+        pageId: json['pageid'],
+        title: json['title'],
+        coordinates: LatLng(json['lat'], json['lon']),
+      );
 }
