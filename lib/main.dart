@@ -36,20 +36,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
 
   LatLng _centrePoint;
-
-  var staticMarkers = <Marker>[
-    Marker(
-      width: 40,
-      height: 40,
-      point: LatLng(50.9097, 1.4044),
-      builder: (_) => Container(
-        child: FlutterLogo(
-          colors: Colors.blue,
-          key: ObjectKey(Colors.blue),
-        ),
-      )
-    )
-  ];
+  List<Marker> _mapMarkers = List.empty();
 
   void _handlePositionChanged(MapPosition position, bool _) {
     _centrePoint = position.center;
@@ -65,7 +52,6 @@ class _HomePageState extends State<HomePage> {
             errorMessage: response.reasonPhrase));
       } else {
         final decodedBody = json.decode(response.body);
-        print(decodedBody);
 
         if (decodedBody['error'] != null) {
           return Left(_FetchError(
@@ -74,7 +60,6 @@ class _HomePageState extends State<HomePage> {
           ));
         }
 
-        print(response.statusCode);
         return Right(_FetchResult.fromJson(decodedBody));
       }
     }
@@ -95,15 +80,16 @@ class _HomePageState extends State<HomePage> {
       }
     );
 
-    print("Searching activated");
     final fetchedArticles = await fetchArticles(endpoint);
-    fetchedArticles.fold(
-            (error) => print("${error.errorCode}: ${error.errorMessage}"),
-            (result) => {
-              for (var i in result.articleResults) {
-                print("Title = ${i.title}, Id = ${i.pageId}, Lat = ${i.coordinates.latitude}, Lon = ${i.coordinates.longitude}")
-              }
-            });
+
+    setState(() {
+      _mapMarkers = fetchedArticles.fold(
+              (error) {
+                print("Fetch error: ${error.errorCode}: ${error.errorMessage}");
+                return List.empty();
+              },
+              (result) => result.articleResults.map(_ArticleResult.asMarker).toList());
+    });
   }
 
   @override
@@ -125,7 +111,7 @@ class _HomePageState extends State<HomePage> {
               subdomains: ['a', 'b', 'c'],
               tileProvider: CachedNetworkTileProvider()
             ),
-            MarkerLayerOptions(markers: staticMarkers)
+            MarkerLayerOptions(markers: _mapMarkers)
           ],
         ),
       ),
@@ -173,4 +159,13 @@ class _ArticleResult {
         title: json['title'],
         coordinates: LatLng(json['lat'], json['lon']),
       );
+
+  static Marker asMarker(_ArticleResult article) => Marker(
+    width: 40,
+    height: 40,
+    point: LatLng(article.coordinates.latitude, article.coordinates.longitude),
+    builder: (_) => Container(
+      child: Icon(Icons.pin_drop),
+    )
+  );
 }
