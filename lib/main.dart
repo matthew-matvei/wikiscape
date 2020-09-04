@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
+import 'package:either_option/either_option.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(App());
@@ -31,8 +35,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
-  LatLng _northWestPoint;
-  LatLng _southEastPoint;
+  LatLng _centrePoint;
 
   var staticMarkers = <Marker>[
     Marker(
@@ -49,14 +52,58 @@ class _HomePageState extends State<HomePage> {
   ];
 
   void _handlePositionChanged(MapPosition position, bool _) {
-    _northWestPoint = position.bounds.northWest;
-    _southEastPoint = position.bounds.southEast;
+    _centrePoint = position.center;
   }
 
-  void _search() {
+  void _search() async {
+    Future<Either<_FetchError, _FetchResult>> fetchArticles(Uri endpoint) async {
+      final response = await http.get(endpoint);
+
+      if (response.statusCode != 200) {
+        return Left(_FetchError(
+            errorCode: response.statusCode, 
+            errorMessage: response.reasonPhrase));
+      } else {
+        final decodedBody = json.decode(response.body);
+        print(decodedBody);
+
+        if (decodedBody['error'] != null) {
+          return Left(_FetchError(
+            errorCode: 0,
+            errorMessage: json.encode(decodedBody['error']),
+          ));
+        }
+
+        print(response.statusCode);
+        return Right(_FetchResult.fromJson(decodedBody));
+      }
+    }
+
+    String formatPoint(LatLng point) =>
+      [point.latitude, point.longitude].join("|");
+
+    final endpoint = Uri.https(
+      'en.wikipedia.org',
+      'w/api.php',
+      {
+        'action': 'query',
+        'list': 'geosearch',
+        'gscoord': formatPoint(_centrePoint),
+        'gsradius': '1000',
+        'gslimit': '20',
+        'format': 'json',
+      }
+    );
+
     print("Searching activated");
-    print("North West point: latitude = ${_northWestPoint?.latitude ?? 0}, longitude = ${_northWestPoint?.longitude ?? 0}");
-    print("South East point: latitude = ${_southEastPoint?.latitude ?? 0}, longitude = ${_southEastPoint?.longitude ?? 0}");
+    final fetchedArticles = await fetchArticles(endpoint);
+    fetchedArticles.fold(
+            (error) => print("${error.errorCode}: ${error.errorMessage}"),
+            (result) => {
+              for (var i in result.queryResults) {
+                print("Title = ${i.title}, Id = ${i.pageId}")
+              }
+            });
   }
 
   @override
@@ -89,4 +136,28 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+class _FetchError {
+  final int errorCode;
+  final String errorMessage;
+
+  const _FetchError({this.errorCode, this.errorMessage});
+}
+
+class _FetchResult {
+
+  final List<_QueryResult> queryResults;
+
+  const _FetchResult({this.queryResults});
+
+  factory _FetchResult.fromJson(Map<String, dynamic> json) =>
+      _FetchResult(queryResults: (json['query']['geosearch'] as List<dynamic>).map((result) => _QueryResult(pageId: result['pageid'], title: result['title'])).toList());
+}
+
+class _QueryResult {
+  final int pageId;
+  final String title;
+
+  const _QueryResult({this.pageId, this.title});
 }
