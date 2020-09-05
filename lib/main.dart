@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
 import 'package:either_option/either_option.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(App());
@@ -43,7 +44,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _search() async {
-    Future<Either<_FetchError, _FetchResult>> fetchArticles(Uri endpoint) async {
+    Future<Either<_FetchError, _FetchArticlesResult>> fetchArticles(Uri endpoint) async {
       final response = await http.get(endpoint);
 
       if (response.statusCode != 200) {
@@ -60,7 +61,7 @@ class _HomePageState extends State<HomePage> {
           ));
         }
 
-        return Right(_FetchResult.fromJson(decodedBody));
+        return Right(_FetchArticlesResult.fromJson(decodedBody));
       }
     }
 
@@ -131,14 +132,14 @@ class _FetchError {
   const _FetchError({this.errorCode, this.errorMessage});
 }
 
-class _FetchResult {
+class _FetchArticlesResult {
 
   final List<_ArticleResult> articleResults;
 
-  const _FetchResult({this.articleResults});
+  const _FetchArticlesResult({this.articleResults});
 
-  factory _FetchResult.fromJson(Map<String, dynamic> json) =>
-      _FetchResult(articleResults: (json['query']['geosearch'] as List<dynamic>).map((result) => _ArticleResult.fromJson(result)).toList());
+  factory _FetchArticlesResult.fromJson(Map<String, dynamic> json) =>
+      _FetchArticlesResult(articleResults: (json['query']['geosearch'] as List<dynamic>).map((result) => _ArticleResult.fromJson(result)).toList());
 }
 
 class _ArticleResult {
@@ -160,12 +161,77 @@ class _ArticleResult {
         coordinates: LatLng(json['lat'], json['lon']),
       );
 
-  static Marker asMarker(_ArticleResult article) => Marker(
-    width: 40,
-    height: 40,
-    point: LatLng(article.coordinates.latitude, article.coordinates.longitude),
-    builder: (_) => Container(
-      child: Icon(Icons.pin_drop),
-    )
-  );
+  static Marker asMarker(_ArticleResult article) {
+    void _handleButtonPressed() async {
+      Future<Either<_FetchError, _FetchPageInfoResult>> fetchPageInformation(Uri endpoint) async {
+        final response = await http.get(endpoint);
+
+        if (response.statusCode != 200) {
+          return Left(_FetchError(
+              errorCode: response.statusCode,
+              errorMessage: response.reasonPhrase));
+        } else {
+          final decodedBody = json.decode(response.body);
+
+          if (decodedBody['error'] != null) {
+            return Left(_FetchError(
+              errorCode: 0,
+              errorMessage: json.encode(decodedBody['error']),
+            ));
+          }
+
+          return Right(_FetchPageInfoResult.fromJson(decodedBody['query']['pages'][article.pageId.toString()]));
+        }
+      }
+
+      final endpoint = Uri.https(
+          'en.wikipedia.org',
+          'w/api.php',
+          {
+            'action': 'query',
+            'prop': 'info',
+            'inprop': 'url',
+            'titles': article.title,
+            'format': 'json',
+          }
+      );
+
+      final pageInformation = await fetchPageInformation(endpoint);
+      final url = pageInformation.fold(
+              (error) {
+                print(error.errorMessage);
+                return null;
+              },
+              (result) => result.uri);
+
+      if (url != null && await canLaunch(url)) {
+        await launch(url);
+      } else {
+        print("Couldn't launch url");
+      }
+    }
+    
+    return Marker(
+        width: 40,
+        height: 40,
+        point: LatLng(article.coordinates.latitude, article.coordinates.longitude),
+        builder: (_) => Container(
+            child: IconButton(
+              icon: Icon(Icons.pin_drop),
+              color: Colors.redAccent,
+              onPressed: _handleButtonPressed,
+            )
+        )
+    );
+  } 
+}
+
+class _FetchPageInfoResult {
+
+  final String uri;
+
+  const _FetchPageInfoResult({this.uri});
+
+  factory _FetchPageInfoResult.fromJson(Map<String, dynamic> json) =>
+      _FetchPageInfoResult(uri: json['canonicalurl']);
 }
