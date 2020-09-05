@@ -1,11 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
-import 'package:either_option/either_option.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+
+import 'fetcher.dart' as fetcher;
 
 class HomePage extends StatefulWidget {
   HomePage({Key key, this.title}) : super(key: key);
@@ -26,27 +24,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _search() async {
-    Future<Either<_FetchError, _FetchArticlesResult>> fetchArticles(Uri endpoint) async {
-      final response = await http.get(endpoint);
-
-      if (response.statusCode != 200) {
-        return Left(_FetchError(
-            errorCode: response.statusCode,
-            errorMessage: response.reasonPhrase));
-      } else {
-        final decodedBody = json.decode(response.body);
-
-        if (decodedBody['error'] != null) {
-          return Left(_FetchError(
-            errorCode: 0,
-            errorMessage: json.encode(decodedBody['error']),
-          ));
-        }
-
-        return Right(_FetchArticlesResult.fromJson(decodedBody));
-      }
-    }
-
     String formatPoint(LatLng point) =>
         [point.latitude, point.longitude].join("|");
 
@@ -63,16 +40,22 @@ class _HomePageState extends State<HomePage> {
         }
     );
 
-    final fetchedArticles = await fetchArticles(endpoint);
+    final fetchedArticles = (await fetcher.get(endpoint))
+      .fold(
+            (error) {
+              print("${error.errorCode}: ${error.errorMessage}");
+              return null;
+            },
+            (result) => _FetchArticlesResult.fromJson(result));
 
-    setState(() {
-      _mapMarkers = fetchedArticles.fold(
-              (error) {
-            print("Fetch error: ${error.errorCode}: ${error.errorMessage}");
-            return List.empty();
-          },
-              (result) => result.articleResults.map(_ArticleResult.asMarker).toList());
-    });
+    if (fetchedArticles != null) {
+      setState(() {
+        _mapMarkers = fetchedArticles
+            .articleResults
+            .map(_ArticleResult.asMarker)
+            .toList();
+      });
+    }
   }
 
   @override
@@ -107,13 +90,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _FetchError {
-  final int errorCode;
-  final String errorMessage;
-
-  const _FetchError({this.errorCode, this.errorMessage});
-}
-
 class _FetchArticlesResult {
 
   final List<_ArticleResult> articleResults;
@@ -145,27 +121,6 @@ class _ArticleResult {
 
   static Marker asMarker(_ArticleResult article) {
     void _handleButtonPressed() async {
-      Future<Either<_FetchError, _FetchPageInfoResult>> fetchPageInformation(Uri endpoint) async {
-        final response = await http.get(endpoint);
-
-        if (response.statusCode != 200) {
-          return Left(_FetchError(
-              errorCode: response.statusCode,
-              errorMessage: response.reasonPhrase));
-        } else {
-          final decodedBody = json.decode(response.body);
-
-          if (decodedBody['error'] != null) {
-            return Left(_FetchError(
-              errorCode: 0,
-              errorMessage: json.encode(decodedBody['error']),
-            ));
-          }
-
-          return Right(_FetchPageInfoResult.fromJson(decodedBody['query']['pages'][article.pageId.toString()]));
-        }
-      }
-
       final endpoint = Uri.https(
           'en.wikipedia.org',
           'w/api.php',
@@ -178,13 +133,15 @@ class _ArticleResult {
           }
       );
 
-      final pageInformation = await fetchPageInformation(endpoint);
-      final url = pageInformation.fold(
+      final url = (await fetcher.get(endpoint))
+        .fold(
               (error) {
-            print(error.errorMessage);
-            return null;
-          },
-              (result) => result.uri);
+                print("${error.errorCode}: ${error.errorMessage}");
+                return null;
+              },
+              (result) => _FetchPageInfoResult
+                  .fromJson(result['query']['pages'][article.pageId.toString()])
+                  .uri);
 
       if (url != null && await canLaunch(url)) {
         await launch(url);
