@@ -20,11 +20,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
 
   LatLng _centrePoint;
+  LatLng _userLocation;
   bool _isFetching = false;
   List<Marker> _mapMarkers = List.empty();
-  final CircularProgressIndicator _spinner = new CircularProgressIndicator(
+
+  final _spinner = CircularProgressIndicator(
     valueColor: AlwaysStoppedAnimation(Colors.white),
   );
+  final _location = Location();
 
   void _handlePositionChanged(MapPosition position, bool _) {
     _centrePoint = position.center;
@@ -68,7 +71,35 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+
+    _userLocation = LatLng(50.9097, 1.4044);
+
+    _location.getCurrentLocation()
+      .then((locationResult) => locationResult
+        .fold(
+            (error) => print(error),
+            (location) => setState(() {
+              _userLocation = LatLng(location.latitude, location.longitude);
+            })));
+
+    _location.onLocationChanged.listen((event) {
+      setState(() {
+        _userLocation = LatLng(event.latitude, event.longitude);
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final markers = List<Marker>.from(_mapMarkers);
+    markers.add(Marker(
+        point: _userLocation,
+        builder: (_) => Container(
+          child: Icon(Icons.person_pin, color: Colors.blueAccent, size: 40),
+    )));
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -76,9 +107,9 @@ class _HomePageState extends State<HomePage> {
       body: Center(
         child: FlutterMap(
           options: MapOptions(
-            center: LatLng(50.9097, 1.4044),
+            center: _userLocation,
             zoom: 8.0,
-            onPositionChanged: _handlePositionChanged,
+            onPositionChanged: _handlePositionChanged
           ),
           layers: [
             TileLayerOptions(
@@ -86,7 +117,7 @@ class _HomePageState extends State<HomePage> {
                 subdomains: ['a', 'b', 'c'],
                 tileProvider: CachedNetworkTileProvider()
             ),
-            MarkerLayerOptions(markers: _mapMarkers)
+            MarkerLayerOptions(markers: markers)
           ],
         ),
       ),

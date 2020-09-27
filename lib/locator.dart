@@ -2,7 +2,7 @@ import 'package:either_option/either_option.dart';
 import 'package:location/location.dart';
 
 extension LocationGetting on Location {
-  Future<Either<String, LocationData>> getCurrent() async {
+  Future<Either<String, LocationData>> getCurrentLocation() async {
     if (!await this.serviceEnabled() && !await this.requestService()) {
       Left("Location service is not enabled");
     }

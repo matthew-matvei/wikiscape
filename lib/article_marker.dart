@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:either_option/either_option.dart';
+import 'package:latlong/latlong.dart';
 
 import 'article_result.dart';
 import 'fetcher.dart' as fetcher;
@@ -45,15 +46,14 @@ void _handlePressed(ArticleResult _article) async {
 class ArticleMarker extends Marker {
 
   ArticleMarker(ArticleResult article) : super(
-      width: 40,
-      height: 40,
       point: article.coordinates,
       builder: (_) =>
           Container(
               child: IconButton(
-                icon: Icon(Icons.pin_drop),
+                icon: Icon(Icons.pin_drop, size: 35),
                 color: Colors.redAccent,
                 onPressed: () => _handlePressed(article),
+                iconSize: 35,
               )
           )
   );
