@@ -17,13 +17,21 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
 
   LatLng _centrePoint;
+  bool _isFetching = false;
   List<Marker> _mapMarkers = List.empty();
+  final CircularProgressIndicator _spinner = new CircularProgressIndicator(
+    valueColor: AlwaysStoppedAnimation(Colors.white),
+  );
 
   void _handlePositionChanged(MapPosition position, bool _) {
     _centrePoint = position.center;
   }
 
   void _search() async {
+    setState(() {
+      _isFetching = true;
+    });
+
     String formatPoint(LatLng point) =>
         [point.latitude, point.longitude].join("|");
 
@@ -56,6 +64,10 @@ class _HomePageState extends State<HomePage> {
             .toList();
       });
     }
+
+    setState(() {
+      _isFetching = false;
+    });
   }
 
   @override
@@ -83,7 +95,7 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Search',
-        child: Icon(Icons.search),
+        child: _isFetching ? _spinner : Icon(Icons.search),
         onPressed: _search,
       ),
     );
