@@ -121,10 +121,30 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Search',
-        child: _isFetching ? _spinner : Icon(Icons.search),
-        onPressed: _search,
+      floatingActionButton: Stack(
+        children: <Widget>[
+          Positioned(
+            bottom: 10,
+            right: 10,
+            child: FloatingActionButton(
+              tooltip: 'Search',
+              child: _isFetching ? _spinner : Icon(Icons.search),
+              onPressed: _search,
+              heroTag: 'search',
+            ),
+          ),
+          Positioned(
+            bottom: 80,
+            right: 10,
+            child: FloatingActionButton(
+              tooltip: 'Centre',
+              child: Icon(Icons.my_location),
+              heroTag: 'centre',
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.blueAccent
+            ),
+          )
+        ],
       ),
     );
   }
