@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:either_option/either_option.dart';
 
 import 'fetcher.dart' as fetcher;
 
@@ -48,22 +49,16 @@ class _HomePageState extends State<HomePage> {
         }
     );
 
-    final fetchedArticles = (await fetcher.get(endpoint))
+    (await fetcher.get(endpoint))
       .fold(
             (error) {
               print("${error.errorCode}: ${error.errorMessage}");
-              return null;
+              return None<_FetchArticlesResult>();
             },
-            (result) => _FetchArticlesResult.fromJson(result));
-
-    if (fetchedArticles != null) {
-      setState(() {
-        _mapMarkers = fetchedArticles
-            .articleResults
-            .map(_ArticleResult.asMarker)
-            .toList();
-      });
-    }
+            (result) => Some(_FetchArticlesResult.fromJson(result)))
+      .map((a) => setState(() {
+        _mapMarkers = a.articleResults.map(_ArticleResult.asMarker).toList();
+    }));
 
     setState(() {
       _isFetching = false;
@@ -108,8 +103,13 @@ class _FetchArticlesResult {
 
   const _FetchArticlesResult({this.articleResults});
 
-  factory _FetchArticlesResult.fromJson(Map<String, dynamic> json) =>
-      _FetchArticlesResult(articleResults: (json['query']['geosearch'] as List<dynamic>).map((result) => _ArticleResult.fromJson(result)).toList());
+  factory _FetchArticlesResult.fromJson(dynamic json) =>
+      _FetchArticlesResult(
+          articleResults: (json['query']['geosearch'] as List<dynamic>)
+              ?.map(_ArticleResult.fromJson)
+              ?.toList()
+              ?? List.empty()
+      );
 }
 
 class _ArticleResult {
@@ -117,14 +117,9 @@ class _ArticleResult {
   final String title;
   final LatLng coordinates;
 
-  const _ArticleResult(
-      {
-        this.pageId,
-        this.title,
-        this.coordinates,
-      });
+  const _ArticleResult({this.pageId, this.title, this.coordinates});
 
-  factory _ArticleResult.fromJson(Map<String, dynamic> json) =>
+  static _ArticleResult fromJson(dynamic json) =>
       _ArticleResult(
         pageId: json['pageid'],
         title: json['title'],
@@ -145,21 +140,24 @@ class _ArticleResult {
           }
       );
 
-      final url = (await fetcher.get(endpoint))
+      (await fetcher.get(endpoint))
         .fold(
               (error) {
                 print("${error.errorCode}: ${error.errorMessage}");
-                return null;
+                return None<String>();
               },
-              (result) => _FetchPageInfoResult
+              (result) => Some(_FetchPageInfoResult
                   .fromJson(result['query']['pages'][article.pageId.toString()])
-                  .uri);
-
-      if (url != null && await canLaunch(url)) {
-        await launch(url);
-      } else {
-        print("Couldn't launch url");
-      }
+                  .uri))
+        .fold(
+              () => print("Couldn't acquire url"),
+              (urlString) async => {
+                if (await canLaunch(urlString)) {
+                  await launch(urlString)
+                } else {
+                  print("Couldn't launch url")
+                }
+              });
     }
 
     return Marker(
