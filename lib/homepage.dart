@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:either_option/either_option.dart';
+import 'package:location/location.dart';
 
+import 'article_result.dart';
 import 'fetcher.dart' as fetcher;
+import 'locator.dart';
 
 class HomePage extends StatefulWidget {
   HomePage({Key key, this.title}) : super(key: key);
@@ -57,7 +59,7 @@ class _HomePageState extends State<HomePage> {
             },
             (result) => Some(_FetchArticlesResult.fromJson(result)))
       .map((a) => setState(() {
-        _mapMarkers = a.articleResults.map(_ArticleResult.asMarker).toList();
+        _mapMarkers = a.articleResults.map(ArticleResult.asMarker).toList();
     }));
 
     setState(() {
@@ -99,88 +101,18 @@ class _HomePageState extends State<HomePage> {
 
 class _FetchArticlesResult {
 
-  final List<_ArticleResult> articleResults;
+  final List<ArticleResult> articleResults;
 
   const _FetchArticlesResult({this.articleResults});
 
   factory _FetchArticlesResult.fromJson(dynamic json) =>
       _FetchArticlesResult(
           articleResults: (json['query']['geosearch'] as List<dynamic>)
-              ?.map(_ArticleResult.fromJson)
+              ?.map(ArticleResult.fromJson)
               ?.toList()
               ?? List.empty()
       );
 }
 
-class _ArticleResult {
-  final int pageId;
-  final String title;
-  final LatLng coordinates;
 
-  const _ArticleResult({this.pageId, this.title, this.coordinates});
 
-  static _ArticleResult fromJson(dynamic json) =>
-      _ArticleResult(
-        pageId: json['pageid'],
-        title: json['title'],
-        coordinates: LatLng(json['lat'], json['lon']),
-      );
-
-  static Marker asMarker(_ArticleResult article) {
-    void _handleButtonPressed() async {
-      final endpoint = Uri.https(
-          'en.wikipedia.org',
-          'w/api.php',
-          {
-            'action': 'query',
-            'prop': 'info',
-            'inprop': 'url',
-            'titles': article.title,
-            'format': 'json',
-          }
-      );
-
-      (await fetcher.get(endpoint))
-        .fold(
-              (error) {
-                print("${error.errorCode}: ${error.errorMessage}");
-                return None<String>();
-              },
-              (result) => Some(_FetchPageInfoResult
-                  .fromJson(result['query']['pages'][article.pageId.toString()])
-                  .uri))
-        .fold(
-              () => print("Couldn't acquire url"),
-              (urlString) async => {
-                if (await canLaunch(urlString)) {
-                  await launch(urlString)
-                } else {
-                  print("Couldn't launch url")
-                }
-              });
-    }
-
-    return Marker(
-        width: 40,
-        height: 40,
-        point: LatLng(article.coordinates.latitude, article.coordinates.longitude),
-        builder: (_) => Container(
-            child: IconButton(
-              icon: Icon(Icons.pin_drop),
-              color: Colors.redAccent,
-              onPressed: _handleButtonPressed,
-            )
-        )
-    );
-  }
-}
-
-class _FetchPageInfoResult {
-
-  final String uri;
-
-  const _FetchPageInfoResult({this.uri});
-
-  factory _FetchPageInfoResult.fromJson(Map<String, dynamic> json) =>
-      _FetchPageInfoResult(uri: json['canonicalurl']);
-}
