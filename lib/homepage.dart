@@ -1,3 +1,6 @@
+import 'dart:math';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
@@ -17,6 +20,10 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
+bool Function(LocationData) locationDiffers(LatLng location) => (otherLocation) =>
+  location.latitude != otherLocation.latitude ||
+    location.longitude != otherLocation.longitude;
+
 class _HomePageState extends State<HomePage> {
 
   LatLng _centrePoint;
@@ -28,6 +35,7 @@ class _HomePageState extends State<HomePage> {
     valueColor: AlwaysStoppedAnimation(Colors.white),
   );
   final _location = Location();
+  final MapController _mapController = MapController();
 
   void _handlePositionChanged(MapPosition position, bool _) {
     _centrePoint = position.center;
@@ -63,11 +71,21 @@ class _HomePageState extends State<HomePage> {
             (result) => Some(_FetchArticlesResult.fromJson(result)))
       .map((a) => setState(() {
         _mapMarkers = a.articleResults.map(ArticleResult.asMarker).toList();
+
+        _mapController.fitBounds(
+            LatLngBounds.fromPoints(_mapMarkers.map((marker) => marker.point).toList()),
+            options: FitBoundsOptions(padding: EdgeInsets.all(40)));
     }));
 
     setState(() {
       _isFetching = false;
     });
+  }
+
+  void _centre() {
+    _mapController.move(
+        _userLocation,
+        max(_mapController.zoom, 10));
   }
 
   @override
@@ -84,7 +102,10 @@ class _HomePageState extends State<HomePage> {
               _userLocation = LatLng(location.latitude, location.longitude);
             })));
 
-    _location.onLocationChanged.listen((event) {
+    _location
+        .onLocationChanged
+        .where(locationDiffers(_userLocation))
+        .listen((event) {
       setState(() {
         _userLocation = LatLng(event.latitude, event.longitude);
       });
@@ -97,7 +118,7 @@ class _HomePageState extends State<HomePage> {
     markers.add(Marker(
         point: _userLocation,
         builder: (_) => Container(
-          child: Icon(Icons.person_pin, color: Colors.blueAccent, size: 40),
+          child: Icon(Icons.person_pin_circle, color: Colors.blueAccent, size: 40),
     )));
 
     return Scaffold(
@@ -119,6 +140,7 @@ class _HomePageState extends State<HomePage> {
             ),
             MarkerLayerOptions(markers: markers)
           ],
+          mapController: _mapController
         ),
       ),
       floatingActionButton: Stack(
@@ -134,11 +156,12 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           Positioned(
-            bottom: 80,
+            bottom: 90,
             right: 10,
             child: FloatingActionButton(
               tooltip: 'Centre',
               child: Icon(Icons.my_location),
+              onPressed: _centre,
               heroTag: 'centre',
               backgroundColor: Colors.white,
               foregroundColor: Colors.blueAccent
