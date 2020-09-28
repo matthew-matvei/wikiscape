@@ -1,10 +1,15 @@
+import 'dart:math';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:either_option/either_option.dart';
+import 'package:location/location.dart';
 
+import 'article_result.dart';
 import 'fetcher.dart' as fetcher;
+import 'locator.dart';
 
 class HomePage extends StatefulWidget {
   HomePage({Key key, this.title}) : super(key: key);
@@ -15,20 +20,32 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
+bool Function(LocationData) locationDiffers(LatLng location) => (otherLocation) =>
+  location.latitude != otherLocation.latitude ||
+    location.longitude != otherLocation.longitude;
+
 class _HomePageState extends State<HomePage> {
 
   LatLng _centrePoint;
+  LatLng _userLocation;
   bool _isFetching = false;
   List<Marker> _mapMarkers = List.empty();
-  final CircularProgressIndicator _spinner = new CircularProgressIndicator(
+
+  final _spinner = CircularProgressIndicator(
     valueColor: AlwaysStoppedAnimation(Colors.white),
   );
+  final _location = Location();
+  final MapController _mapController = MapController();
 
   void _handlePositionChanged(MapPosition position, bool _) {
     _centrePoint = position.center;
   }
 
   void _search() async {
+    if (_isFetching) {
+      return;
+    }
+
     setState(() {
       _isFetching = true;
     });
@@ -57,7 +74,11 @@ class _HomePageState extends State<HomePage> {
             },
             (result) => Some(_FetchArticlesResult.fromJson(result)))
       .map((a) => setState(() {
-        _mapMarkers = a.articleResults.map(_ArticleResult.asMarker).toList();
+        _mapMarkers = a.articleResults.map(ArticleResult.asMarker).toList();
+
+        _mapController.fitBounds(
+            LatLngBounds.fromPoints(_mapMarkers.map((marker) => marker.point).toList()),
+            options: FitBoundsOptions(padding: EdgeInsets.all(40)));
     }));
 
     setState(() {
@@ -65,8 +86,45 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _centre() {
+    _mapController.move(
+        _userLocation,
+        max(_mapController.zoom, 10));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _userLocation = LatLng(50.9097, 1.4044);
+
+    _location.getCurrentLocation()
+      .then((locationResult) => locationResult
+        .fold(
+            (error) => print(error),
+            (location) => setState(() {
+              _userLocation = LatLng(location.latitude, location.longitude);
+            })));
+
+    _location
+        .onLocationChanged
+        .where(locationDiffers(_userLocation))
+        .listen((event) {
+      setState(() {
+        _userLocation = LatLng(event.latitude, event.longitude);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final markers = List<Marker>.from(_mapMarkers);
+    markers.add(Marker(
+        point: _userLocation,
+        builder: (_) => Container(
+          child: Icon(Icons.person_pin_circle, color: Colors.blueAccent, size: 40),
+    )));
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -74,9 +132,9 @@ class _HomePageState extends State<HomePage> {
       body: Center(
         child: FlutterMap(
           options: MapOptions(
-            center: LatLng(50.9097, 1.4044),
+            center: _userLocation,
             zoom: 8.0,
-            onPositionChanged: _handlePositionChanged,
+            onPositionChanged: _handlePositionChanged
           ),
           layers: [
             TileLayerOptions(
@@ -84,14 +142,36 @@ class _HomePageState extends State<HomePage> {
                 subdomains: ['a', 'b', 'c'],
                 tileProvider: CachedNetworkTileProvider()
             ),
-            MarkerLayerOptions(markers: _mapMarkers)
+            MarkerLayerOptions(markers: markers)
           ],
+          mapController: _mapController
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Search',
-        child: _isFetching ? _spinner : Icon(Icons.search),
-        onPressed: _search,
+      floatingActionButton: Stack(
+        children: <Widget>[
+          Positioned(
+            bottom: 10,
+            right: 10,
+            child: FloatingActionButton(
+              tooltip: 'Search',
+              child: _isFetching ? _spinner : Icon(Icons.search),
+              onPressed: _search,
+              heroTag: 'search'
+            ),
+          ),
+          Positioned(
+            bottom: 90,
+            right: 10,
+            child: FloatingActionButton(
+              tooltip: 'Centre',
+              child: Icon(Icons.my_location),
+              onPressed: _centre,
+              heroTag: 'centre',
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.blueAccent
+            ),
+          )
+        ],
       ),
     );
   }
@@ -99,88 +179,15 @@ class _HomePageState extends State<HomePage> {
 
 class _FetchArticlesResult {
 
-  final List<_ArticleResult> articleResults;
+  final List<ArticleResult> articleResults;
 
   const _FetchArticlesResult({this.articleResults});
 
   factory _FetchArticlesResult.fromJson(dynamic json) =>
       _FetchArticlesResult(
           articleResults: (json['query']['geosearch'] as List<dynamic>)
-              ?.map(_ArticleResult.fromJson)
+              ?.map(ArticleResult.fromJson)
               ?.toList()
               ?? List.empty()
       );
-}
-
-class _ArticleResult {
-  final int pageId;
-  final String title;
-  final LatLng coordinates;
-
-  const _ArticleResult({this.pageId, this.title, this.coordinates});
-
-  static _ArticleResult fromJson(dynamic json) =>
-      _ArticleResult(
-        pageId: json['pageid'],
-        title: json['title'],
-        coordinates: LatLng(json['lat'], json['lon']),
-      );
-
-  static Marker asMarker(_ArticleResult article) {
-    void _handleButtonPressed() async {
-      final endpoint = Uri.https(
-          'en.wikipedia.org',
-          'w/api.php',
-          {
-            'action': 'query',
-            'prop': 'info',
-            'inprop': 'url',
-            'titles': article.title,
-            'format': 'json',
-          }
-      );
-
-      (await fetcher.get(endpoint))
-        .fold(
-              (error) {
-                print("${error.errorCode}: ${error.errorMessage}");
-                return None<String>();
-              },
-              (result) => Some(_FetchPageInfoResult
-                  .fromJson(result['query']['pages'][article.pageId.toString()])
-                  .uri))
-        .fold(
-              () => print("Couldn't acquire url"),
-              (urlString) async => {
-                if (await canLaunch(urlString)) {
-                  await launch(urlString)
-                } else {
-                  print("Couldn't launch url")
-                }
-              });
-    }
-
-    return Marker(
-        width: 40,
-        height: 40,
-        point: LatLng(article.coordinates.latitude, article.coordinates.longitude),
-        builder: (_) => Container(
-            child: IconButton(
-              icon: Icon(Icons.pin_drop),
-              color: Colors.redAccent,
-              onPressed: _handleButtonPressed,
-            )
-        )
-    );
-  }
-}
-
-class _FetchPageInfoResult {
-
-  final String uri;
-
-  const _FetchPageInfoResult({this.uri});
-
-  factory _FetchPageInfoResult.fromJson(Map<String, dynamic> json) =>
-      _FetchPageInfoResult(uri: json['canonicalurl']);
 }
