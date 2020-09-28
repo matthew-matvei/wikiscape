@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:either_option/either_option.dart';
-import 'package:latlong/latlong.dart';
 
 import 'article_result.dart';
 import 'fetcher.dart' as fetcher;
 
-void _handlePressed(ArticleResult _article) async {
+void _handlePressed(ArticleResult article) async {
   final endpoint = Uri.https(
       'en.wikipedia.org',
       'w/api.php',
@@ -15,7 +14,7 @@ void _handlePressed(ArticleResult _article) async {
         'action': 'query',
         'prop': 'info',
         'inprop': 'url',
-        'titles': _article.title,
+        'titles': article.title,
         'format': 'json',
       }
   );
@@ -28,7 +27,7 @@ void _handlePressed(ArticleResult _article) async {
       },
           (result) =>
           Some(_FetchPageInfoResult
-              .fromJson(result['query']['pages'][_article.pageId.toString()])
+              .fromJson(result['query']['pages'][article.pageId.toString()])
               .uri))
       .fold(
           () => print("Couldn't acquire url"),
@@ -36,8 +35,7 @@ void _handlePressed(ArticleResult _article) async {
       {
         if (await canLaunch(urlString)) {
           await launch(urlString)
-        } else
-          {
+        } else {
             print("Couldn't launch url")
           }
       });

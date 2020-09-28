@@ -191,6 +191,3 @@ class _FetchArticlesResult {
               ?? List.empty()
       );
 }
-
-
-
