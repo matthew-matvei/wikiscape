@@ -42,6 +42,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _search() async {
+    if (_isFetching) {
+      return;
+    }
+
     setState(() {
       _isFetching = true;
     });
@@ -152,7 +156,7 @@ class _HomePageState extends State<HomePage> {
               tooltip: 'Search',
               child: _isFetching ? _spinner : Icon(Icons.search),
               onPressed: _search,
-              heroTag: 'search',
+              heroTag: 'search'
             ),
           ),
           Positioned(
