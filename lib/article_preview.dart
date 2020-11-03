@@ -1,5 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:either_option/either_option.dart';
 
 import 'article_result.dart';
 import 'fetcher.dart' as fetcher;
@@ -12,6 +15,29 @@ class ArticlePreview extends StatefulWidget {
 
   @override
   _ArticlePreviewState createState() => _ArticlePreviewState();
+}
+
+Future<Option<String>> _fetchThumbnailUrlFor(ArticleResult article) async {
+  final endpoint = Uri.https(
+    'en.wikipedia.org',
+    'w/api.php',
+    {
+      'action': 'query',
+      'prop': 'pageimages',
+      'titles': article.title,
+      'piprop': 'thumbnail',
+      'pilicense': 'any',
+      'format': 'json'
+    });
+
+  return (await fetcher.get(endpoint))
+      .fold(
+          (error) {
+            print("${error.errorCode}: ${error.errorMessage}");
+            return None<String>();
+          },
+          (result) =>
+            Some(result['query']['pages'][article.pageId.toString()]['thumbnail']['source']));
 }
 
 Future<String> _fetchIntroFor(ArticleResult article) async {
@@ -39,6 +65,7 @@ class _ArticlePreviewState extends State<ArticlePreview> {
 
   bool _fetchingIntro = true;
   String _intro;
+  Option<String> _thumbnailUrl = None<String>();
 
   @override
   void initState() {
@@ -53,6 +80,13 @@ class _ArticlePreviewState extends State<ArticlePreview> {
             _fetchingIntro = false;
           });
     });
+
+    _fetchThumbnailUrlFor(widget.article)
+        .then((thumbnail) {
+          setState(() {
+            _thumbnailUrl = thumbnail;
+          });
+    });
   }
 
   @override
@@ -64,11 +98,25 @@ class _ArticlePreviewState extends State<ArticlePreview> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                    Text(
-                        widget.article.title,
-                        style: TextStyle(
-                            fontSize: 20
+                    Row(
+                      children: [
+                        Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: _thumbnailUrl.fold(
+                                    () => Icon(Icons.image, size: 50),
+                                    (url) => CachedNetworkImage(
+                                        imageUrl: url,
+                                        placeholder: (_, __) => Icon(Icons.image, size: 50),
+                                        errorWidget: (_, __, ___) => Icon(Icons.error),
+                                        width: 50))
+                        ),
+                        Expanded(
+                            child: Text(
+                              widget.article.title,
+                              style: TextStyle(fontSize: 20)
+                          )
                         )
+                      ],
                     ),
                   Divider(),
                   Expanded(
