@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -119,11 +118,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final markers = List<Marker>.from(_mapMarkers);
-    markers.add(Marker(
+    markers.insert(0, Marker(
         point: _userLocation,
         builder: (_) => Container(
           child: Icon(Icons.person_pin_circle, color: Colors.blueAccent, size: 40),
-    )));
+        )));
 
     return Scaffold(
       appBar: AppBar(
