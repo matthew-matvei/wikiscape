@@ -59,19 +59,29 @@ class _ArticlePreviewState extends State<ArticlePreview> {
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       builder: (context, scrollController) =>
-          Column(
-            children: [
-              Text(widget.article.title),
-              Expanded(
-                  child: ListView(
-                      controller: scrollController,
-                      children: [
-                        _fetchingIntro
-                            ? CircularProgressIndicator()
-                            : Html(data: _intro)
-                      ])
-                )
-            ]
+          Padding(
+            padding: EdgeInsets.all(10),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                    Text(
+                        widget.article.title,
+                        style: TextStyle(
+                            fontSize: 20
+                        )
+                    ),
+                  Divider(),
+                  Expanded(
+                      child: ListView(
+                          controller: scrollController,
+                          children: [
+                              _fetchingIntro
+                                  ? CircularProgressIndicator()
+                                  : Html(data: _intro)
+                          ])
+                  )
+                ]
+            ),
           ),
       initialChildSize: 0.3,
       maxChildSize: 0.5,
