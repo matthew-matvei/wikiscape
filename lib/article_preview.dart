@@ -71,8 +71,6 @@ class _ArticlePreviewState extends State<ArticlePreview> {
   void initState() {
     super.initState();
 
-    _intro = "Just a test";
-
     _fetchIntroFor(widget.article)
         .then((intro) {
           setState(() {
