@@ -73,7 +73,7 @@ class _ArticlePreviewState extends State<ArticlePreview> {
             ],
           ),
       initialChildSize: 0.3,
-      maxChildSize: 0.3,
+      maxChildSize: 0.5,
       expand: false,
     );
   }
