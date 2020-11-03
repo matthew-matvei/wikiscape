@@ -122,7 +122,9 @@ class _ArticlePreviewState extends State<ArticlePreview> {
                           controller: scrollController,
                           children: [
                               _fetchingIntro
-                                  ? CircularProgressIndicator()
+                                  ? Center(
+                                      child: CircularProgressIndicator(),
+                                      heightFactor: 3)
                                   : Html(data: _intro)
                           ])
                   )
