@@ -56,7 +56,7 @@ Future<String> _fetchIntroFor(ArticleResult article) async {
     .fold(
           (error) {
             print("${error.errorCode}: ${error.errorMessage}");
-            return null;
+            return '';
           },
           (result) => result['query']['pages'][article.pageId.toString()]['extract']);
 }
