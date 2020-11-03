@@ -29,6 +29,7 @@ dependencies:
   either_option: ^1.0.6
   url_launcher: ^5.5.2
   location: ^3.0.0
+  flutter_html: ^1.0.2
 
 dev_dependencies:
   flutter_test:

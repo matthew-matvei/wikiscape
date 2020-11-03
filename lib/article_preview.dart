@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 
 import 'article_result.dart';
 import 'fetcher.dart' as fetcher;
@@ -63,14 +64,14 @@ class _ArticlePreviewState extends State<ArticlePreview> {
               Text(widget.article.title),
               Expanded(
                   child: ListView(
-                    children: [
-                      _fetchingIntro
-                          ? CircularProgressIndicator()
-                          : Text(_intro)
-                    ],
-                    controller: scrollController)
+                      controller: scrollController,
+                      children: [
+                        _fetchingIntro
+                            ? CircularProgressIndicator()
+                            : Html(data: _intro)
+                      ])
                 )
-            ],
+            ]
           ),
       initialChildSize: 0.3,
       maxChildSize: 0.5,
