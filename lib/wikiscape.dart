@@ -9,7 +9,7 @@ class Wikiscape extends StatelessWidget {
       title: 'Wikiscape',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+        visualDensity: VisualDensity.adaptivePlatformDensity
       ),
       home: HomePage(title: 'Wikiscape'),
     );
