@@ -184,6 +184,9 @@ class _ArticlePreviewState extends State<ArticlePreview> {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
+      initialChildSize: 0.3,
+      maxChildSize: 0.5,
+      expand: false,
       builder: (context, scrollController) =>
           Stack(
             alignment: Alignment.bottomCenter,
@@ -212,10 +215,7 @@ class _ArticlePreviewState extends State<ArticlePreview> {
               ),
               _actionsBar
             ],
-          ),
-      initialChildSize: 0.3,
-      maxChildSize: 0.5,
-      expand: false,
+          )
     );
   }
 }
