@@ -110,17 +110,21 @@ class _ArticlePreviewState extends State<ArticlePreview> {
 
     _fetchIntroFor(widget.article)
         .then((intro) {
-          setState(() {
-            _intro = intro;
-            _fetchingIntro = false;
-          });
+          if (mounted) {
+            setState(() {
+              _intro = intro;
+              _fetchingIntro = false;
+            });
+          }
     });
 
     _fetchThumbnailUrlFor(widget.article)
         .then((thumbnail) {
-          setState(() {
-            _thumbnailUrl = thumbnail;
-          });
+          if (mounted) {
+            setState(() {
+              _thumbnailUrl = thumbnail;
+            });
+          }
     });
   }
 
