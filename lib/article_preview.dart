@@ -79,23 +79,23 @@ void _readArticle(ArticleResult article) async {
   (await fetcher.get(endpoint))
       .fold(
           (error) {
-        print("${error.errorCode}: ${error.errorMessage}");
-        return None<String>();
-      },
+              print("${error.errorCode}: ${error.errorMessage}");
+              return None<String>();
+          },
           (result) =>
-          Some(_FetchPageInfoResult
-              .fromJson(result['query']['pages'][article.pageId.toString()])
-              .uri))
+              Some(_FetchPageInfoResult
+                  .fromJson(result['query']['pages'][article.pageId.toString()])
+                  .uri))
       .fold(
           () => print("Couldn't acquire url"),
           (urlString) async =>
-      {
-        if (await canLaunch(urlString)) {
-          await launch(urlString)
-        } else {
-            print("Couldn't launch url")
-          }
-      });
+              {
+                if (await canLaunch(urlString)) {
+                  await launch(urlString)
+                } else {
+                    print("Couldn't launch url")
+                  }
+              });
 }
 
 class _ArticlePreviewState extends State<ArticlePreview> {
@@ -103,6 +103,59 @@ class _ArticlePreviewState extends State<ArticlePreview> {
   bool _fetchingIntro = true;
   String _intro;
   Option<String> _thumbnailUrl = None<String>();
+
+  Widget get _header {
+    return Row(
+      children: [
+        Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: _thumbnailUrl.fold(
+                () => Icon(Icons.image, size: 50),
+                (url) => CachedNetworkImage(
+                    imageUrl: url,
+                    placeholder: (_, __) => Icon(Icons.image, size: 50),
+                    errorWidget: (_, __, ___) => Icon(Icons.error),
+                    width: 50
+                )
+            )
+        ),
+        Expanded(
+            child: Text(
+                widget.article.title,
+                style: TextStyle(fontSize: 20)
+            )
+        )
+      ],
+    );
+  }
+
+  Widget get _actionsBar {
+    return Positioned(
+        child: Container(
+            width: double.infinity,
+            height: 40,
+            color: Color.fromARGB(200, 255, 255, 255),
+            child: Center(
+                child: FlatButton(
+                    child: Text("READ MORE"),
+                    textColor: Colors.blueAccent,
+                    height: double.infinity,
+                    onPressed: () {
+                        Navigator.pop(widget.context);
+                        Scaffold.of(widget.context).showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    "Loading article...",
+                                    textAlign: TextAlign.center),
+                            )
+                        );
+                        _readArticle(widget.article);
+                    },
+                ),
+            )
+        )
+    );
+  }
 
   @override
   void initState() {
@@ -140,67 +193,24 @@ class _ArticlePreviewState extends State<ArticlePreview> {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10),
-                              child: _thumbnailUrl.fold(
-                                  () => Icon(Icons.image, size: 50),
-                                  (url) => CachedNetworkImage(
-                                  imageUrl: url,
-                                  placeholder: (_, __) => Icon(Icons.image, size: 50),
-                                  errorWidget: (_, __, ___) => Icon(Icons.error),
-                                  width: 50))
-                          ),
-                          Expanded(
-                              child: Text(
-                                  widget.article.title,
-                                  style: TextStyle(fontSize: 20)
-                              )
-                          )
-                        ],
-                      ),
-                      Divider(),
-                      Expanded(
-                          child: ListView(
-                              controller: scrollController,
-                              children: [
-                                _fetchingIntro
-                                    ? Center(
-                                      child: CircularProgressIndicator(),
-                                      heightFactor: 3)
-                                    : Html(data: _intro),
-                                Container(height: 40)
-                              ]),
-                      )
+                        _header,
+                        Divider(),
+                        Expanded(
+                            child: ListView(
+                                controller: scrollController,
+                                children: [
+                                    _fetchingIntro
+                                        ? Center(
+                                              child: CircularProgressIndicator(),
+                                              heightFactor: 3)
+                                        : Html(data: _intro),
+                                    Container(height: 40)
+                                ]),
+                        )
                     ]
                 ),
               ),
-              Positioned(
-                  child: Container(
-                      width: double.infinity,
-                      height: 40,
-                      color: Color.fromARGB(200, 255, 255, 255),
-                      child: Center(
-                          child: FlatButton(
-                              child: Text("READ MORE"),
-                              textColor: Colors.blueAccent,
-                              height: double.infinity,
-                              onPressed: () {
-                                Navigator.pop(widget.context);
-                                Scaffold.of(widget.context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            "Loading article...",
-                                            textAlign: TextAlign.center),
-                                    )
-                                );
-                                _readArticle(widget.article);
-                              },
-                          ),
-                      )
-                  )
-              )
+              _actionsBar
             ],
           ),
       initialChildSize: 0.3,
