@@ -75,6 +75,11 @@ class _HomePageState extends State<HomePage> {
       .map((a) => setState(() {
         _mapMarkers = a.articleResults.map(ArticleResult.asMarker).toList();
 
+        // if there are no map markers, fitting bounds later will fail
+        if (_mapMarkers.isEmpty) {
+          return;
+        }
+
         _mapController.fitBounds(
             LatLngBounds.fromPoints(_mapMarkers.map((marker) => marker.point).toList()),
             options: FitBoundsOptions(padding: EdgeInsets.all(40)));
