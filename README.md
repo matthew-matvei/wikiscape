@@ -11,3 +11,7 @@ Get the app from [the Google Play store](https://play.google.com/store/apps/deta
 ```sh
 flutter build appbundle
 ```
+
+## Appollo
+
+Appollo is being used for building / running the app on iOS, since I do not personally have an Apple device.
