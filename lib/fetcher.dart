@@ -7,9 +7,12 @@ Future<Either<FetchError, Map<String, dynamic>>> get(Uri endpoint) async {
   final response = await http.get(endpoint);
 
   if (response.statusCode != 200) {
-    return Left(FetchError._(
+    return Left(
+      FetchError._(
         errorCode: response.statusCode,
-        errorMessage: response.reasonPhrase));
+        errorMessage: response.reasonPhrase ?? "Something went wrong",
+      ),
+    );
   } else {
     final decodedBody = json.decode(response.body);
 
@@ -26,5 +29,5 @@ class FetchError {
   final int errorCode;
   final String errorMessage;
 
-  const FetchError._({this.errorCode, this.errorMessage});
+  const FetchError._({required this.errorCode, required this.errorMessage});
 }

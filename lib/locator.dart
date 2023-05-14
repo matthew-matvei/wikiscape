@@ -3,21 +3,21 @@ import 'package:location/location.dart';
 
 extension LocationGetting on Location {
   Future<Either<String, LocationData>> getCurrentLocation() async {
-    if (!await this.serviceEnabled() && !await this.requestService()) {
+    if (!await serviceEnabled() && !await requestService()) {
       Left("Location service is not enabled");
     }
 
-    final locationPermission = await this.hasPermission();
+    final locationPermission = await hasPermission();
 
     if (locationPermission == PermissionStatus.deniedForever) {
       Left("User has forever denied location permissions");
     }
 
     if (locationPermission != PermissionStatus.granted &&
-        await this.requestPermission() != PermissionStatus.granted) {
+        await requestPermission() != PermissionStatus.granted) {
       Left("User denied location permissions");
     }
 
-    return Right(await this.getLocation());
+    return Right(await getLocation());
   }
 }

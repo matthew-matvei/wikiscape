@@ -2,7 +2,7 @@
     package="io.matthewmatvei.wikiscape">
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:name="io.flutter.app.FlutterApplication"
+        android:name="${applicationName}"
         android:label="Wikiscape"
         android:icon="@mipmap/launcher_icon">
         <activity
